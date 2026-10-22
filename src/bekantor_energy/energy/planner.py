@@ -1,12 +1,10 @@
 """A* on (time, exact storage-grid point); h=0 is uniform-cost reference."""
 from dataclasses import dataclass
-import heapq
-from itertools import count
 import math
-from time import perf_counter
 
 from ..contracts import EnergyAction, EnergyPlan, EnergyState, PlanningInputs
 from .simulator import EPS, PhysicalSimulator, finite_nonnegative
+from .search import astar_search
 
 
 class PlanningLimitError(RuntimeError):
@@ -71,7 +69,8 @@ class BatterySearchProblem:
                            + [c.battery_capacity_kwh, initial.stored_kwh, self.terminal])))
         self.simulator = PhysicalSimulator()
 
-    def successors(self, state):
+    def physical_successors(self, state):
+        """Shared graph edges and physical ledgers, independent of objective."""
         if state.step >= self.horizon:
             return []
         c, t = self.inputs.config, state.step
@@ -87,11 +86,21 @@ class BatterySearchProblem:
                 continue  # Infeasible physical edge is absent, not rounded/clipped into existence.
             if abs(result.state.stored_kwh - target) > EPS or result.cost < -EPS:
                 raise ArithmeticError("Invalid state-grid transition or negative edge")
-            successors.append((action, EnergyState(t + 1, target), result.cost))
+            successors.append((action, EnergyState(t + 1, target), result))
         return successors
+
+    def successors(self, state):
+        return [(action, successor, result.cost)
+                for action, successor, result in self.physical_successors(state)]
 
     def heuristic(self, state):
         if self.settings.heuristic == "zero" or state.step == self.horizon:
+            return 0.
+        return min(self.inputs.config.import_prices[state.step:]) * self.grid_lower_bound(state)
+
+    def grid_lower_bound(self, state):
+        """Continuous optimistic AC import bound; ignores timing/power/terminal."""
+        if state.step == self.horizon:
             return 0.
         c = self.inputs.config
         demand = self.inputs.forecast.demand_kwh[state.step:]
@@ -103,7 +112,7 @@ class BatterySearchProblem:
         grid_lower_bound = max(0., deficits - usable - optimistic_stored_solar)
         # Ignores capacity, power, chronology and terminal replenishment, and buys
         # all remaining required energy at its cheapest tariff. Thus optimistic.
-        return min(c.import_prices[state.step:]) * grid_lower_bound
+        return grid_lower_bound
 
     def is_goal(self, state):
         return state.step == self.horizon and state.stored_kwh >= self.terminal - EPS
@@ -119,35 +128,7 @@ class AStarPlanner:
 
     def search(self, problem, initial_state):
         """Reopen improved states; correct also for admissible inconsistent h."""
-        started, serial = perf_counter(), count()
-        frontier = [(problem.heuristic(initial_state), -initial_state.step, next(serial), 0., initial_state)]
-        distance, parents = {initial_state: 0.}, {}
-        expanded, generated = 0, 1
-        while frontier:
-            if expanded >= self.settings.max_expanded or perf_counter() - started > self.settings.max_seconds:
-                raise PlanningLimitError("Search resource limit reached; optimality not established")
-            _, _, _, cost, state = heapq.heappop(frontier)
-            if cost > distance[state] + 1e-12:
-                continue
-            if problem.is_goal(state):
-                actions, states = [], [state]
-                while state != initial_state:
-                    previous, action = parents[state]
-                    actions.append(action)
-                    states.append(previous)
-                    state = previous
-                return EnergyPlan(tuple(reversed(actions)), cost, expanded,
-                                  problem.inputs.forecast.model_id, generated, perf_counter() - started,
-                                  self.settings.heuristic, tuple(reversed(states)))
-            expanded += 1
-            for action, successor, edge_cost in problem.successors(state):
-                candidate = cost + edge_cost
-                if candidate < distance.get(successor, math.inf) - 1e-12:
-                    distance[successor] = candidate
-                    parents[successor] = (state, action)
-                    estimate = problem.heuristic(successor)
-                    if not math.isfinite(estimate) or estimate < -EPS:
-                        raise ValueError("Heuristic must be finite and nonnegative in this graph")
-                    heapq.heappush(frontier, (candidate + estimate, -successor.step, next(serial), candidate, successor))
-                    generated += 1
-        raise ValueError("No feasible plan reaches the terminal requirement")
+        result = astar_search(problem, initial_state, self.settings, PlanningLimitError)
+        return EnergyPlan(result.actions, result.value, result.expanded_nodes,
+                          problem.inputs.forecast.model_id, result.generated_nodes,
+                          result.elapsed_seconds, self.settings.heuristic, result.states)

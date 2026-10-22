@@ -2,19 +2,26 @@
 
 Sistema local y modular para investigar predicción de demanda eléctrica y
 planificación de energía solar, batería y red para viviendas y pequeños negocios.
-**Estado: Fases 1 y 2 implementadas.** Hay procesamiento reproducible y predicción
-MLP TensorFlow/Keras de 168 a 24 horas en CPU. Despacho energético, búsqueda A*,
-control de hardware, dashboard y notebook académico quedan pendientes.
+**Estado: implementado hasta Fase 4.3.** Incluye adquisición y EDA, predicción
+MLP TensorFlow/Keras de 168 a 24 horas en CPU, simulador físico, A* con
+replanificación horaria y evaluación continua con SOC persistente. Los modos
+Económico, Autonomía y Equilibrado comparten el núcleo de búsqueda y se comparan
+con autoconsumo reactivo sobre validación.
 
-La instalación siguiente conserva el entorno de datos de Fase 1. Para entrenar
-y consultar los resultados de Fase 2, ver [protocolo y comandos](docs/phase2-methodology.md)
-y [resultados de referencia](docs/phase2-results.md).
+Los informes conservan el contexto y los resultados de cada fase. Para la
+predicción, ver [protocolo y comandos](docs/phase2-methodology.md) y
+[resultados de referencia](docs/phase2-results.md); para el estado energético
+actual, ver [operación continua](docs/phase4_2-continuous-energy.md) y
+[comparación de modos](docs/phase4_3-energy-modes.md). Son resultados de escenarios
+simulados UCI + PVGIS independientes, con previsión solar idealizada; no prueban
+ahorros reales ni capacidad de respaldo ante cortes.
 
 ## Instalación local en Windows (PowerShell, CPU)
 
-Usar Python de 64 bits, versión 3.11 o posterior. La versión comprobada para
-Fase 1 figura en `docs/phase1-validation.md`. No hace falta GPU, CUDA ni
-TensorFlow en esta fase. Ejecutar los comandos desde la raíz del proyecto:
+Usar Python de 64 bits, versión 3.11 o posterior. El entorno completo comprobado
+usa Windows, Python 3.13.15 y TensorFlow 2.21.0 en CPU. No hace falta GPU ni CUDA.
+Los comandos de datos y las pruebas sin entrenamiento no requieren TensorFlow.
+Ejecutar los comandos desde la raíz del proyecto:
 
 ```powershell
 python --version
@@ -32,6 +39,11 @@ congela el entorno probado, incluidas dependencias transitivas. Para otra versi�
 de Python/plataforma puede ser necesario resolver nuevamente los rangos y validar.
 Internet sólo se requiere para instalación y adquisición; los datos cacheados y
 las pruebas se usan offline. El comando `bekantor` también queda instalado.
+Para predicción y para ejecutar también las pruebas de integración TensorFlow:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-ml-lock.txt
+```
 
 ## Prueba rápida sin red (datos sintéticos)
 
@@ -107,7 +119,8 @@ medición de paneles ni un pronóstico operativo del día siguiente.
 `pv_kwh_estimate` aproxima energía de cada hora manteniendo constante esa
 potencia. **No se unen automáticamente UCI y PVGIS:** difieren en vivienda,
 ubicación, calendario y tratamiento de zona horaria. Cualquier combinación
-futura será un escenario simulado explícito, no evidencia de una misma vivienda.
+en las fases energéticas es un escenario simulado explícito, no evidencia de
+una misma vivienda.
 
 ## Estructura y responsabilidades
 
@@ -119,15 +132,17 @@ bekantor-energy/
 │   ├── units.py              # Conversiones físicas
 │   ├── contracts.py          # Interfaces predictivas, simulador, A*, evaluación
 │   ├── forecasting/          # Ventanas, baselines, normalización, MLP y experimentos
+│   ├── energy/               # Simulador, A*, modos, evaluación continua y gráficos
 │   ├── pipeline.py           # Flujo reproducible compartido
 │   ├── eda.py                # Estadísticas y gráficos sin interfaz gráfica
 │   ├── cli.py                # Comandos locales
 │   ├── __init__.py
 │   └── __main__.py
-├── configs/                  # Vivienda y comparación MLP de referencia
+├── configs/                  # Vivienda, MLP, A*, evaluación continua y modos
 ├── data/{raw,processed,simulated}/
-├── models/                   # Artefactos futuros, ignorados
+├── models/                   # Modelos y checkpoints locales, ignorados
 ├── experiments/              # EDA y ejecuciones, ignorados
+├── scripts/                  # Análisis y auditorías físicas reproducibles
 ├── tests/                    # Suite unittest y fixtures sintéticos pequeños
 ├── docs/                     # Arquitectura, datos, unidades y validación
 ├── colab/README.md           # Plan de extracción; sin notebook todavía
@@ -141,8 +156,8 @@ bekantor-energy/
 
 No existen dos implementaciones. El núcleo es importable por CLI y por un
 futuro exportador académico. El adaptador `MLPDemandPredictor` cumple el protocolo
-predictivo existente. Las interfaces energéticas siguen sin lógica de despacho
-o búsqueda.
+predictivo existente. El simulador y los objetivos energéticos reutilizan los
+contratos y el mismo motor A*, sin duplicar tres planificadores.
 
 Documentación: [arquitectura](docs/architecture.md), [fuentes y calidad](docs/data-sources.md),
 [unidades](docs/units.md), [validación realizada](docs/phase1-validation.md).
@@ -156,8 +171,9 @@ Documentación: [arquitectura](docs/architecture.md), [fuentes y calidad](docs/d
   Comisión Europea, JRC; [OpenAPI](https://photovoltaic-geographic-information-system.ec.europa.eu/api/v6/openapi.json).
   Generación modelada independiente; disponibilidad, términos y cobertura pueden cambiar.
 
-Las métricas predictivas se documentan en la Fase 2; no hay ahorros energéticos
-demostrados. TensorFlow 2.21.0 se instaló y validó en Windows/Python 3.13 con CPU,
+Las métricas predictivas se documentan en la Fase 2 y las económicas simuladas
+en las Fases 3 y 4; no hay ahorros reales demostrados.
+TensorFlow 2.21.0 se instaló y validó en Windows/Python 3.13 con CPU,
 sin requerir GPU. Es una dependencia opcional para los comandos de datos.
 
 ## Predicción de demanda (Fase 2)
@@ -178,8 +194,9 @@ Consultar sus archivos sin volver a abrir test. El comando final para una
 ```
 
 La generación de ventanas rechaza entradas desconocidas y etiquetas imputadas;
-normaliza exclusivamente con train. El modelo seleccionado estima 24 kWh
-horarios a partir de 168 horas pasadas, sin integrar A*. Se guardan checkpoints,
+normaliza exclusivamente con train. El modelo seleccionado estima 24 valores
+horarios en kWh a partir de 168 horas pasadas; su integración con A* se implementa en
+el módulo energético de Fase 3. Se guardan checkpoints,
 normalizador, configuración, métricas, predicciones, metadatos y gráficos.
 No hay búsqueda automática de hiperparámetros; modificar explícitamente el JSON
 para futuros experimentos supervisados. Detalles y límites en
@@ -190,14 +207,14 @@ MLP 64–32 original con la misma red y variables futuras conocidas (hora, día 
 mes, seno/coseno), usando tres semillas y sólo train/validación. Incluye métricas
 por semilla, agregados, análisis de picos, gráficos y comandos reproducibles.
 Se ejecuta con `compare-calendar`; los resultados y modelos originales se
-conservan. El siguiente experimento requiere revisión humana.
+conservan; la optimización posterior continúa bajo supervisión humana.
 
 El [experimento de MSE ponderada de Fase 2.3](docs/phase2_3-weighted-mse.md)
 compara pesos 1/2 por objetivo > P90 de train contra los controles con calendario
 del Experimento 1. Incluye tres semillas, métricas de consumos altos y bajos,
 análisis del compromiso global y reproducción con `compare-weighted-mse`.
 Se recomienda mantener MSE convencional; la pérdida ponderada queda como
-experimento conservado. No se probaron otras ponderaciones ni se avanzó a A*.
+experimento conservado. No se probaron otras ponderaciones.
 
 ## Simulación energética y A* (Fase 3)
 
@@ -223,11 +240,69 @@ A* + ponderada y oracle ideal sobre 14 días de validación y 112 casos factoria
 sin cambiar A*, redes ni objetivo. Se reproduce con `compare-energy` y conserva
 resultados por caso, dispersión, casos desfavorables y auditoría física completa.
 
+## Operación continua y SOC terminal (Fase 4.2)
+
+La [Fase 4.2](docs/phase4_2-continuous-energy.md) implementa operación continua
+con SOC persistente sobre dos semanas de validación y perfiles PVGIS
+cronológicos. Compara A* original con una condición terminal predefinida y
+separa costo bruto de valoración contable del saldo final. El
+[diseño previo](docs/phase4_2-design.md) documenta supuestos y sensibilidad.
+Se ejecuta con `continuous-energy`; no modifica modelos ni el motor A* original.
+
+## Modos de gestión energética (Fase 4.3)
+
+La [Fase 4.3](docs/phase4_3-energy-modes.md) añade objetivos configurables
+Económico, Autonomía y Equilibrado sobre un único núcleo A*. Conserva las
+condiciones continuas de Fase 4.2 y compara contra reactivo. La CLI es
+`energy-modes`; pesos, escalas y garantías se fijan en el
+[diseño previo](docs/phase4_3-design.md) y `configs/energy.modes.json`.
+
+La [interfaz y verificación matemática](docs/energy-management-modes.md)
+documenta unidades, heurísticas y desempate lexicográfico. La corrida aceptada
+es `experiments/phase4_3/modes-corrected-20261022`; la preliminar se conserva
+como auditoría de una corrección numérica, sin modificar los pesos fijados.
+
+La corrección calcula el objetivo lexicográfico de Autonomía con aritmética
+racional antes de redondear los flujos, para preservar empates físicos y elegir
+el menor costo. Incluye una prueba de regresión y comparaciones con UCS y
+enumeración independiente. El modo Económico reproduce las ocho trayectorias
+de referencia de Fase 4.2.
+
+Con tarifa variable, Económico reduce el costo ajustado agregado un 10,49 %
+frente al reactivo, pero importa un 6,36 % más de red. Equilibrado reduce ese
+costo un 4,52 % e importa un 4,07 % más. Autonomía tampoco supera al reactivo
+en importación en los casos evaluados. Con tarifa plana, el reactivo resulta
+más favorable en costo e importación. La valoración terminal no es una factura;
+los límites y la dispersión están en el informe de Fase 4.3.
+
+## Verificación y archivos versionados
+
+La suite de Fase 4.3 incluye 118 pruebas sin entrenamiento, con continuidad de
+SOC, causalidad, límites físicos, costos terminales y los tres objetivos frente
+a UCS. Hay ocho pruebas adicionales de integración TensorFlow sobre datos
+sintéticos temporales. El comando de prueba rápida ejecuta ambas partes cuando
+TensorFlow está instalado; ninguna abre el test UCI real ni modifica los modelos
+congelados. En la verificación del segundo commit (22/10/2026), las **126 pruebas
+aprobaron en 82,25 segundos**, sin fallos ni omisiones. Los registros de ejecución se conservan localmente en
+`experiments/verification/`.
+
+Git conserva código, configuraciones sin secretos, pruebas, fixtures pequeños
+y documentación. `.gitignore` excluye `.venv/`, datos brutos, procesados y
+simulados, modelos, checkpoints, resultados experimentales, cachés, temporales
+y los nombres habituales de archivos de credenciales. En `data/`, `models/` y
+`experiments/` sólo se versionan los marcadores y README permitidos.
+
+Las pruebas sintéticas funcionan desde un clon con las dependencias instaladas.
+Para repetir los experimentos históricos hacen falta además los datos adquiridos,
+los modelos congelados y sus manifiestos/archivos de auditoría locales, que no
+se distribuyen en Git. Las configuraciones conservan esas rutas explícitas; los
+informes de cada fase documentan los comandos y prerrequisitos. Usar directorios
+de salida nuevos para preservar las corridas anteriores.
+
 ## Etapas posteriores (sin implementar)
 
-Quedan pendientes la revisión del horizonte/SOC terminal, más semillas y
+Quedan pendientes Resiliencia ante cortes, más semillas y
 perfiles solares, robustez ante incertidumbre y cortes, dashboard y extracción
-académica. No se avanzó a Fase 4.2 ni se generó el notebook Colab.
+académica. No se implementó Resiliencia ni se generó el notebook Colab.
 
-El remoto Git está configurado a `moiseslobayza/bekantor-energy`; este trabajo no
-realiza commits, pushes ni modificaciones en GitHub.
+Repositorio: [moiseslobayza/bekantor-energy](https://github.com/moiseslobayza/bekantor-energy).

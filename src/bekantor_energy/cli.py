@@ -89,6 +89,19 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--previous-verification", type=Path, default=Path("experiments/phase3/validation-20261022/verification.json"))
     compare.add_argument("--run-dir", type=Path, required=True)
     compare.add_argument("--scenario-dir", type=Path, required=True)
+    continuous = commands.add_parser("continuous-energy", help="Operación continua de validación, SOC persistente y tratamiento terminal explícito")
+    continuous.add_argument("--data-dir", type=Path, default=Path("data/processed/uci"))
+    continuous.add_argument("--model-bundle", type=Path, default=Path("models/phase2_2/calendar-20261022/seed_2026/calendar/bundle"))
+    continuous.add_argument("--home-config", type=Path, default=Path("configs/home.phase3.json"))
+    continuous.add_argument("--planner-config", type=Path, default=Path("configs/planner.phase3.json"))
+    continuous.add_argument("--config", type=Path, default=Path("configs/energy.continuous.json"))
+    continuous.add_argument("--previous-verification", type=Path, default=Path("experiments/phase4_1/paired-20261022/verification.json"))
+    continuous.add_argument("--run-dir", type=Path, required=True)
+    continuous.add_argument("--scenario-dir", type=Path, required=True)
+    modes = commands.add_parser("energy-modes", help="Comparar Económico, Autonomía y Equilibrado en validación continua")
+    modes.add_argument("--config", type=Path, default=Path("configs/energy.modes.json"))
+    modes.add_argument("--data-dir", type=Path, default=Path("data/processed/uci"))
+    modes.add_argument("--run-dir", type=Path, required=True)
     return parser
 
 
@@ -153,5 +166,14 @@ def main(argv: list[str] | None = None) -> None:
             run_comparison(args.data_dir, args.mse_bundle, args.weighted_bundle, args.solar_raw,
                            args.home_config, args.planner_config, ComparisonConfig.load(args.config),
                            args.run_dir, args.scenario_dir, args.previous_verification)
+        elif args.command == "continuous-energy":
+            from .energy.continuous import ContinuousConfig
+            from .energy.continuous_experiment import run_continuous_experiment
+            run_continuous_experiment(args.data_dir, args.model_bundle, args.home_config,
+                                     args.planner_config, ContinuousConfig.load(args.config),
+                                     args.run_dir, args.scenario_dir, args.previous_verification)
+        elif args.command == "energy-modes":
+            from .energy.mode_experiment import ModeComparisonConfig, run_mode_experiment
+            run_mode_experiment(ModeComparisonConfig.load(args.config), args.run_dir, data_dir=args.data_dir)
     except (ValueError, TypeError, KeyError, OSError, URLError) as exc:
         parser.exit(2, f"Error: {exc}\n")

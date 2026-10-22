@@ -1,0 +1,14 @@
+{
+  "days_per_block": 7,
+  "initial_soc": 0.5,
+  "terminal_min_soc": 0.5,
+  "flat_tariff_sim_per_kwh": 0.15,
+  "valuation_sim_per_stored_kwh": 0.1425,
+  "valuation_sensitivity": [0.0, 0.076, 0.1425, 0.15789473684210525, 0.38],
+  "solar_sources": {
+    "january": "data/raw/pvgis/cordoba-20230115-8d.json",
+    "july": "data/raw/pvgis/cordoba-20230715-8d.json"
+  },
+  "seed": 2026,
+  "workers": 2
+}

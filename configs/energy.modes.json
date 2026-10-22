@@ -1,0 +1,10 @@
+{
+  "previous_run": "experiments/phase4_2/continuous-20261022",
+  "source_archive": "experiments/phase4_3/preparation-20261022/preservation-input.json",
+  "balanced_cost_weight": 0.5,
+  "balanced_cost_scale_sim": 1.0,
+  "balanced_grid_scale_kwh": 1.0,
+  "workers": 2,
+  "seed": 2026,
+  "description": "Predeclared fixed objectives; same continuous validation cases as Phase 4.2; no retrospective weight tuning"
+}
