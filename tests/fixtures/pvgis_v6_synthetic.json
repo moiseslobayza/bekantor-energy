@@ -1,0 +1,9 @@
+{
+  "fixture_kind": "synthetic_contract_example_not_real_generation",
+  "power": [0.0, 1000.0, 2000.0, 0.0],
+  "timestamps": ["2023-01-01 00:00:00", "2023-01-01 01:00:00", "2023-01-01 02:00:00", "2023-01-01 03:00:00"],
+  "peak_power": 3.0,
+  "peak_power_unit": "kWp",
+  "unit": "radians",
+  "frequency": "h"
+}

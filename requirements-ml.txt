@@ -1,0 +1,3 @@
+# Optional Phase 2 dependency; base acquisition/EDA remains independent of TF.
+-r requirements.txt
+tensorflow==2.21.0

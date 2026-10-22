@@ -1,0 +1,10 @@
+{
+  "days_per_demand_stratum": 7,
+  "solar_factors": {"high": 1.0, "low": 0.25},
+  "initial_soc_levels": [0.2, 0.8],
+  "tariff_modes": ["flat", "time_of_use"],
+  "flat_tariff_sim_per_kwh": 0.15,
+  "seed": 2026,
+  "workers": 2,
+  "description": "Fixed factorial validation design; no objective, grid or network tuning"
+}

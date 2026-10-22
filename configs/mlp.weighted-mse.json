@@ -1,0 +1,8 @@
+{
+  "normal_weight": 1.0,
+  "peak_weight": 2.0,
+  "peak_quantile": 0.9,
+  "low_quantile": 0.25,
+  "global_error_tolerance_pct": 1.0,
+  "weight_reduction": "mean_over_all_targets"
+}

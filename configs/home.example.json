@@ -1,0 +1,16 @@
+{
+  "pv_peak_kwp": 3.0,
+  "pv_system_efficiency": 0.86,
+  "battery_capacity_kwh": 5.0,
+  "max_charge_kw": 2.5,
+  "max_discharge_kw": 2.5,
+  "charge_efficiency": 0.95,
+  "discharge_efficiency": 0.95,
+  "min_soc": 0.2,
+  "initial_soc": 0.5,
+  "import_tariff_per_kwh": [0.15],
+  "export_tariff_per_kwh": [0.0],
+  "currency": "SIM",
+  "horizon_steps": 24,
+  "step_hours": 1.0
+}

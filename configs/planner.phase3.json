@@ -1,0 +1,7 @@
+{
+  "storage_step_kwh": 0.25,
+  "heuristic": "relaxed",
+  "max_expanded": 100000,
+  "max_seconds": 10.0,
+  "terminal_min_soc": null
+}
