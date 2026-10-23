@@ -2,19 +2,22 @@
 
 Sistema local y modular para investigar predicción de demanda eléctrica y
 planificación de energía solar, batería y red para viviendas y pequeños negocios.
-**Estado: implementado hasta Fase 4.3.** Incluye adquisición y EDA, predicción
+**Estado: implementado hasta Fase 4.5.** Incluye adquisición y EDA, predicción
 MLP TensorFlow/Keras de 168 a 24 horas en CPU, simulador físico, A* con
 replanificación horaria y evaluación continua con SOC persistente. Los modos
 Económico, Autonomía y Equilibrado comparten el núcleo de búsqueda y se comparan
-con autoconsumo reactivo sobre validación.
+con autoconsumo reactivo sobre validación. Incluye diagnóstico físico del modo
+Autonomía y un componente experimental de resiliencia ante cortes imprevistos,
+con cargas críticas sintéticas, reservas operativas y emergencia común.
 
 Los informes conservan el contexto y los resultados de cada fase. Para la
 predicción, ver [protocolo y comandos](docs/phase2-methodology.md) y
 [resultados de referencia](docs/phase2-results.md); para el estado energético
-actual, ver [operación continua](docs/phase4_2-continuous-energy.md) y
-[comparación de modos](docs/phase4_3-energy-modes.md). Son resultados de escenarios
+actual, ver [comparación de modos](docs/phase4_3-energy-modes.md),
+[diagnóstico de Autonomía](docs/phase4_4-autonomy-diagnostic.md) y
+[resiliencia](docs/phase4_5-resilience.md). Son resultados de escenarios
 simulados UCI + PVGIS independientes, con previsión solar idealizada; no prueban
-ahorros reales ni capacidad de respaldo ante cortes.
+ahorros reales ni garantizan capacidad de respaldo de una instalación real.
 
 ## Instalación local en Windows (PowerShell, CPU)
 
@@ -132,13 +135,13 @@ bekantor-energy/
 │   ├── units.py              # Conversiones físicas
 │   ├── contracts.py          # Interfaces predictivas, simulador, A*, evaluación
 │   ├── forecasting/          # Ventanas, baselines, normalización, MLP y experimentos
-│   ├── energy/               # Simulador, A*, modos, evaluación continua y gráficos
+│   ├── energy/               # Simulador, A*, modos, diagnóstico y resiliencia experimental
 │   ├── pipeline.py           # Flujo reproducible compartido
 │   ├── eda.py                # Estadísticas y gráficos sin interfaz gráfica
 │   ├── cli.py                # Comandos locales
 │   ├── __init__.py
 │   └── __main__.py
-├── configs/                  # Vivienda, MLP, A*, evaluación continua y modos
+├── configs/                  # Vivienda, MLP, A*, modos y protocolos experimentales
 ├── data/{raw,processed,simulated}/
 ├── models/                   # Modelos y checkpoints locales, ignorados
 ├── experiments/              # EDA y ejecuciones, ignorados
@@ -275,16 +278,101 @@ en importación en los casos evaluados. Con tarifa plana, el reactivo resulta
 más favorable en costo e importación. La valoración terminal no es una factura;
 los límites y la dispersión están en el informe de Fase 4.3.
 
+## Diagnóstico de Autonomía (Fase 4.4)
+
+La [Fase 4.4](docs/phase4_4-autonomy-diagnostic.md) contrasta el reactivo con
+una [cota física independiente](docs/autonomy-physical-bound.md), demanda
+perfecta diagnóstica, distintas resoluciones y valoración del SOC terminal.
+El reactivo alcanza el mínimo físico de importación en los ocho escenarios
+sin cortes: 126,714131 kWh/semana de media. Autonomía + MLP importa un 2,9866 %
+más; el oracle reduce casi toda esa desventaja, pero tampoco supera al reactivo.
+Todos terminan con 1 kWh, por lo que el SOC terminal no explica la diferencia.
+
+Se conserva Autonomía como referencia experimental, sin atribuirle mejoras de
+importación no demostradas. El resultado depende de red disponible sin límite,
+demanda fija y eficiencias constantes; no es una conclusión universal ni una
+evaluación de respaldo. Las 24 corridas nuevas y sus casos desfavorables se
+conservan, sin seleccionar retrospectivamente otra grilla. Configuración:
+`configs/energy.autonomy-diagnostic.json`.
+
+## Resiliencia ante cortes imprevistos (Fase 4.5)
+
+La [Fase 4.5](docs/phase4_5-resilience.md) implementa seis estrategias sobre
+dos bloques independientes de siete días continuos de validación, dos perfiles
+PVGIS de Córdoba y tarifas plana/variable. Hay 72 casos con cortes de 2/6/12 h
+a las 06:00/14:00/22:00 y ocho controles sin corte: **480 replays principales**.
+Con piloto y sensibilidades se completaron 656 replays semanales sin fallos.
+
+La demanda crítica es un **40 % sintético** de UCI. El 60 % no esencial se
+desconecta durante cortes y se registra como energía sacrificada. Se conserva
+SOC entre días, piso físico 20 %, reserva convencional 50 % y el mismo
+controlador de emergencia para todos. Ninguna estrategia conoce los cortes
+futuros; el oracle sólo conoce demanda futura de validación.
+
+Medias sobre 72 replays semanales con un corte cada uno; ENS es por evento:
+
+| Estrategia | ENS crítica kWh/evento | Casos sin déficit crítico | Costo ajustado semanal SIM |
+|---|---:|---:|---:|
+| Reactivo sin reserva adicional | 1,945820 | 16/72 | 21,935228 |
+| Reserva fija 50 % | 1,017527 | 28/72 | 23,676292 |
+| Reserva adaptativa con MLP | 0,737537 | 44/72 | 22,983586 |
+| A* con persistencia de 24 h | 0,623267 | 44/72 | 23,577745 |
+| A* con MLP congelada | 0,653646 | 44/72 | 22,711361 |
+| A* oracle de demanda | 0,599772 | 50/72 | 21,942328 |
+
+A* + MLP evita 0,363881 kWh críticos por evento frente a reserva fija
+(**35,7613 %** de reducción agregada), cumpliendo los umbrales predefinidos.
+Mejora 36 casos y empata 36 en ENS. Reduce costo ajustado medio un 4,08 %, con
+0,178374 kWh semanales más de red; hay casos individuales con mayor costo.
+Con la misma MLP, A* reduce ENS un 11,3745 % frente a reserva adaptativa,
+pero importa más. **No se demuestra superioridad neuronal sobre persistencia**:
+MLP produce un 4,8741 % más de ENS, aunque con menor costo e importación.
+
+El objetivo experimental es lexicográfico: primero riesgo de déficit crítico
+en cortes hipotéticos de cuatro horas, después costo. No utiliza el calendario
+real de cortes ni cambia Económico, Autonomía o Equilibrado. Usa h=0, aritmética
+racional y comparaciones con UCS/programación dinámica en problemas pequeños.
+El riesgo no equivale a ENS realizada de cortes de 2/6/12 h; ni siquiera el
+oracle es una cota superior universal de servicio. La grilla fina del panel
+no mejora ENS de MLP y casi duplica expansiones; se conserva la resolución
+principal de 0,25 kWh sin elegirla retrospectivamente.
+
+Son simulaciones horarias con solar ideal, tarifas ilustrativas SIM y batería
+sin degradación. Los dos bloques UCI no son 72 muestras independientes. Se
+presupone observabilidad de demanda potencial pasada aun durante cortes;
+no se modelan pérdida de telemetría, respuesta del usuario ni hardware de isla.
+El costo ajustado valora energía terminal y **no es una factura**. La autonomía
+horaria censurada no garantiza horas de respaldo en una instalación real.
+Se recomienda mantener resiliencia como componente experimental y conservar
+los controles de reserva adaptativa y persistencia para evaluar su beneficio.
+
+Para ejecutar en carpetas nuevas, con los artefactos históricos locales y
+fuentes compatibles con sus manifiestos:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/diagnose_autonomy.py --config configs/energy.autonomy-diagnostic.json --run-dir experiments/phase4_4/repeat-01
+.\.venv\Scripts\python.exe scripts/run_resilience.py --stage pilot --run-dir experiments/phase4_5/repeat-pilot
+.\.venv\Scripts\python.exe scripts/analyze_resilience.py --run-dir experiments/phase4_5/repeat-pilot
+.\.venv\Scripts\python.exe scripts/verify_resilience.py --run-dir experiments/phase4_5/repeat-pilot
+.\.venv\Scripts\python.exe scripts/run_resilience.py --stage full --run-dir experiments/phase4_5/repeat-full --cache-source experiments/phase4_5/repeat-pilot
+```
+
+Los informes de ambas fases contienen los comandos de análisis, gráficos,
+sensibilidades y auditoría completa. Las previsiones neuronales se reutilizan
+congeladas; estos experimentos no reentrenan redes ni abren el test final.
+
 ## Verificación y archivos versionados
 
-La suite de Fase 4.3 incluye 118 pruebas sin entrenamiento, con continuidad de
-SOC, causalidad, límites físicos, costos terminales y los tres objetivos frente
-a UCS. Hay ocho pruebas adicionales de integración TensorFlow sobre datos
-sintéticos temporales. El comando de prueba rápida ejecuta ambas partes cuando
-TensorFlow está instalado; ninguna abre el test UCI real ni modifica los modelos
-congelados. En la verificación del segundo commit (22/10/2026), las **126 pruebas
-aprobaron en 82,25 segundos**, sin fallos ni omisiones. Los registros de ejecución se conservan localmente en
-`experiments/verification/`.
+La suite hasta Fase 4.5 incluye **146 pruebas sin entrenamiento y ocho de
+integración TensorFlow** con datos sintéticos temporales. Verifica continuidad
+de SOC, causalidad, conservación física, límites de batería, costos terminales,
+objetivos frente a UCS, cota de importación, cargas críticas y emergencia común.
+El comando de prueba rápida ejecuta ambas partes cuando TensorFlow está
+instalado; ninguna abre el test UCI real ni modifica los modelos congelados.
+Las integraciones entrenan únicamente redes pequeñas y temporales de prueba.
+En esta consolidación del 23/10/2026, las **154 pruebas aprobaron en 177,889 s**,
+sin fallos ni omisiones. Registro local:
+`experiments/verification/consolidation-4_4-4_5-tests-20261023.txt`.
 
 Git conserva código, configuraciones sin secretos, pruebas, fixtures pequeños
 y documentación. `.gitignore` excluye `.venv/`, datos brutos, procesados y
@@ -299,10 +387,18 @@ se distribuyen en Git. Las configuraciones conservan esas rutas explícitas; los
 informes de cada fase documentan los comandos y prerrequisitos. Usar directorios
 de salida nuevos para preservar las corridas anteriores.
 
+Los verificadores históricos también protegen las fuentes y el README vigente
+al ejecutar cada corrida. Esta consolidación actualiza ese README, sin cambiar
+los manifiestos originales: para una auditoría histórica estricta se necesita
+el árbol fuente congelado compatible con sus hashes, en un checkout separado.
+La comprobación de consolidación registra el cambio documental autorizado
+por separado de modelos, datos y resultados, que permanecen intactos.
+
 ## Etapas posteriores (sin implementar)
 
-Quedan pendientes Resiliencia ante cortes, más semillas y
-perfiles solares, robustez ante incertidumbre y cortes, dashboard y extracción
-académica. No se implementó Resiliencia ni se generó el notebook Colab.
+Quedan pendientes mayor diversidad de perfiles y semillas, errores de previsión
+solar, telemetría durante cortes y validación específica de hardware. Dashboard
+y extracción académica siguen sin implementar. El notebook Colab todavía no se
+ha comenzado; la arquitectura modular permite prepararlo más adelante.
 
 Repositorio: [moiseslobayza/bekantor-energy](https://github.com/moiseslobayza/bekantor-energy).

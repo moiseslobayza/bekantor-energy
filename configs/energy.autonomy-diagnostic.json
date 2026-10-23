@@ -1,0 +1,11 @@
+{
+  "previous_run": "experiments/phase4_3/modes-corrected-20261022",
+  "reference_step_kwh": 0.25,
+  "sensitivity_steps_kwh": [0.5, 0.125],
+  "sensitivity_tariff": "time_of_use",
+  "workers": 2,
+  "material_improvement_pct": 1.0,
+  "material_improvement_kwh_per_week": 0.5,
+  "terminal_energy_values": [0.0, 0.95, 1.0526315789473684],
+  "description": "Diagnostic only: fixed autonomy objective, 24h MPC, same eight historical validation cases; four variable-tariff cases for resolution sensitivity"
+}

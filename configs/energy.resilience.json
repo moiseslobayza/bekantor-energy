@@ -1,0 +1,12 @@
+{
+  "previous_run": "experiments/phase4_4/autonomy-diagnostic-20261022",
+  "paired_reference": "experiments/phase4_3/modes-corrected-20261022",
+  "resilience": {"critical_fraction": 0.4, "operational_soc": 0.5, "risk_hours": 4, "ens_tolerance_kwh": 0.000001, "terminal_value": 0.1425},
+  "planner": {"storage_step_kwh": 0.25, "heuristic": "zero", "max_expanded": 100000, "max_seconds": 10.0, "terminal_min_soc": null},
+  "workers": 2,
+  "stage_budget_seconds": {"pilot": 1200, "full": 3600, "panel": 1800},
+  "material_mean_avoided_critical_kwh": 0.1,
+  "material_aggregate_ens_reduction_pct": 10.0,
+  "valuation_sensitivity": [0.0, 0.076, 0.1425, 0.15789473684210525, 0.38],
+  "description": "Six policies on all 80 paired cases, fixed 40% synthetic critical load; no retrospective objective tuning"
+}
