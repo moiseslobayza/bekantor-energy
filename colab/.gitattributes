@@ -1,0 +1,3 @@
+# Preserve reproducibility hashes across Windows and Linux checkouts.
+assets/*.csv text eol=lf
+academic_data.py text eol=lf

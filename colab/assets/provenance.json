@@ -1,0 +1,64 @@
+{
+  "selection": "Calendar fixed: first six full months of 2007; not selected by model/control outcomes",
+  "uci": {
+    "authors": "Georges Hebrail and Alice Berard",
+    "doi": "10.24432/C58K54",
+    "landing_url": "https://archive.ics.uci.edu/dataset/235/individual+household+electric+power+consumption",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "download_url": "https://archive.ics.uci.edu/static/public/235/individual+household+electric+power+consumption.zip",
+    "archive_sha256": "9f84b46ade8a2d8e1286ec4b2b6c2987a45a755c59f263be3b3b3d10dfbda3ff",
+    "original_train_end": "2009-09-20T12:00:00",
+    "start": "2007-01-01T00:00:00",
+    "end": "2007-06-30T23:00:00",
+    "hours": 4344,
+    "source_train_sha256": "144318a9090b5dd23d5dc18e31654a348a5dcf95601cab8d91dace8020badddd",
+    "preprocessing": "GAP kW integrated as sum(min_count=60)/60 kWh; causal ffill <=5 minutes; unknown targets rejected",
+    "precision": "CSV rounded to nine decimals; <=5e-10 kWh rounding; same values used in notebook",
+    "equivalence_to_core_train": true,
+    "timezone": "UCI unspecified wall clock, kept naive"
+  },
+  "pvgis": {
+    "provider": "European Commission, Joint Research Centre, PVGIS 6; ERA5 reanalysis",
+    "original_receipt": {
+      "url": "https://photovoltaic-geographic-information-system.ec.europa.eu/api/v6/power/broadband?latitude=-31.4201&longitude=-64.1888&start_time=2023-01-15T03%3A00%3A00&end_time=2023-01-23T02%3A00%3A00&frequency=Hourly&timezone=UTC&irradiance_source=ERA5&peak-power=3.0&system_efficiency=0.86&surface_tilt=30.0&surface_orientation=0.0&photovoltaic_module=cSi%3AFree+standing+2025&verbose=1",
+      "retrieved_at_utc": "2026-10-22T19:02:51.024768+00:00",
+      "sha256": "ea3e1e28ce8173e7064de94db33b59d19b7459e9be87bbc7260abacc8c7c798f",
+      "source_kind": "pvgis_modeled_generation",
+      "api_version": "6",
+      "query": {
+        "latitude": -31.4201,
+        "longitude": -64.1888,
+        "start": "2023-01-15T03:00:00",
+        "end": "2023-01-23T02:00:00",
+        "peak_kwp": 3.0,
+        "system_efficiency": 0.86,
+        "tilt_deg": 30.0,
+        "orientation_deg": 0.0,
+        "irradiance_source": "ERA5"
+      },
+      "timezone": "UTC",
+      "power_unit": "W",
+      "interval_hours": 1,
+      "energy_assumption": "hourly rectangular integration; not measured energy"
+    },
+    "processed_source_sha256": "c818baba5768d2250c37c79e31118232e2703610e28f4d9e19a8e7bee6f4e686",
+    "sample_hours": 48,
+    "selection": "First 48 chronological hours of the existing January 2023 profile",
+    "attribution_url": "https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en",
+    "reuse_url": "https://commission.europa.eu/legal-notice_en",
+    "not_synchronized_with_uci": true,
+    "units": "AC kWh per one-hour interval; PVGIS efficiency already applied once"
+  },
+  "academic_partitions": {
+    "train_days": 126,
+    "validation_days": 27,
+    "test_days": 28,
+    "all_within_original_train": true,
+    "historical_test_used": false
+  },
+  "assets": {
+    "consumption_hourly.csv": "cb16af223fcccff6c4360565b5f684a6e1d717d1a87dfb14a427e0b71027484d",
+    "solar_cordoba_48h.csv": "eabc7acba56a8d790cad67c0b5298ec032fc9e3bb110667a6ac0d4d35b4fd1fa"
+  }
+}
