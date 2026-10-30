@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import math
 
 from ..contracts import EnergyAction, EnergyPlan, EnergyState, PlanningInputs
+from .logic import evaluate_action
 from .simulator import EPS, PhysicalSimulator, finite_nonnegative
 from .search import astar_search
 
@@ -79,6 +80,10 @@ class BatterySearchProblem:
             delta = target - state.stored_kwh
             action = (EnergyAction(charge_kw=delta / (c.charge_efficiency * c.step_hours)) if delta > 0
                       else EnergyAction(discharge_kw=-delta * c.discharge_efficiency / c.step_hours))
+            inference = evaluate_action(state, action, self.inputs.forecast.demand_kwh[t],
+                                        self.inputs.solar_kwh[t], c, grid_available=self.available[t])
+            if not inference.admissible:
+                continue  # Forward-chained conclusion removes the edge from A*.
             try:
                 result = self.simulator.step(state, action, self.inputs.forecast.demand_kwh[t],
                                              self.inputs.solar_kwh[t], c)

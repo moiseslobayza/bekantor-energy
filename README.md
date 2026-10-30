@@ -2,20 +2,22 @@
 
 Sistema local y modular para investigar predicción de demanda eléctrica y
 planificación de energía solar, batería y red para viviendas y pequeños negocios.
-**Estado: implementado hasta Fase 4.5.** Incluye adquisición y EDA, predicción
+**Estado: implementado hasta Fase 5.1.** Incluye adquisición y EDA, predicción
 MLP TensorFlow/Keras de 168 a 24 horas en CPU, simulador físico, A* con
 replanificación horaria y evaluación continua con SOC persistente. Los modos
 Económico, Autonomía y Equilibrado comparten el núcleo de búsqueda y se comparan
 con autoconsumo reactivo sobre validación. Incluye diagnóstico físico del modo
 Autonomía y un componente experimental de resiliencia ante cortes imprevistos,
-con cargas críticas sintéticas, reservas operativas y emergencia común.
+con cargas críticas sintéticas, reservas operativas y emergencia común. La Fase
+5.1 añade inferencia lógica explícita como filtro de las acciones candidatas de A*.
 
 Los informes conservan el contexto y los resultados de cada fase. Para la
 predicción, ver [protocolo y comandos](docs/phase2-methodology.md) y
 [resultados de referencia](docs/phase2-results.md); para el estado energético
 actual, ver [comparación de modos](docs/phase4_3-energy-modes.md),
 [diagnóstico de Autonomía](docs/phase4_4-autonomy-diagnostic.md) y
-[resiliencia](docs/phase4_5-resilience.md). Son resultados de escenarios
+[resiliencia](docs/phase4_5-resilience.md). Para las reglas y su integración,
+ver [Fase 5.1](docs/phase5_1-logica.md). Son resultados de escenarios
 simulados UCI + PVGIS independientes, con previsión solar idealizada; no prueban
 ahorros reales ni garantizan capacidad de respaldo de una instalación real.
 
